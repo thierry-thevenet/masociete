@@ -4,22 +4,17 @@ from urllib.parse import urlencode
 import requests
 from flask import Flask, redirect, request, render_template_string, session, send_from_directory
 
-
+version = '0.1.2'
 
 app = Flask(__name__)
+app.secret_key = 'ùmkljùmkjagzklj'
 
-
-
-DID = 'did:talao:talaonet:4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68'
 
 url_callback = 'http://localhost:3000/callback'
 client_id = '211286433e39cce01db448d80181bdfd005554b19cd51b3fe7943f6b3b86ab6e'
 client_secret = '2791a731e6a59f56b6b4dd0d08c9b1f593b5f3658b9fd731cb24248e2669af4b'
 
-app.secret_key = 'ùmkljùmkjagzklj'
-
 url_callback = 'http://localhost:3000/callback'
-
 
 fc_url = 'https://fcp.integ01.dev-franceconnect.fr'
 fc_url_authorize = fc_url + '/api/v1/authorize'
@@ -122,25 +117,17 @@ def send_file(filename):
 	return send_from_directory('/home/thierry/Talao/uploads/', filename)
 
 
-# This is to prove  DID
-#@app.route('/did', methods=['GET'])
+# This is the DID proof
+@app.route('/did/', methods=['GET'])
 def did_check () :
 	html = """<!DOCTYPE html>
 		<html lang="en">
 			<body>
-				<p> 'masociete.co    Our Decentralized Identifier is <b>""" + DID + """</b> </p>
-			</body>
-		</html>"""
-	return render_template_string(html)
-
-# This is to Verify a Certificate issued by Talao . To be completed for database access
-#@app.route('/verify', methods=['GET'])
-def certificate_check () :
-	certificate_id = request.args.get('certificate_id')
-	html = """<!DOCTYPE html>
-		<html lang="en">
-			<body>
-				<p>The Certificate #<b>""" + certificate_id + """</b> has been issued by masociete.co</p>
+				<h1>MaSociete.co</h1>
+                <h2>Our Decentralized IDentifiers are : </h2>
+                <p>
+                    <li><b>did:talao:talaonet:c5C1B070b46138AC3079cD9Bce10010d6e1fCD8D</b></li>
+                </p>
 			</body>
 		</html>"""
 	return render_template_string(html)
