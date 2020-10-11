@@ -51,7 +51,16 @@ def root():
 
 @app.route('/', methods=['GET', 'POST'])
 def login() :
-    return 'ok website masociete.co'
+    html = """<html lang="en">
+			<body>
+				<h1>Website de MaSociete.co</h1>
+                <h2>Our Decentralized IDentifiers are : </h2>
+                <p>
+                    <li><b>did:talao:talaonet:c5C1B070b46138AC3079cD9Bce10010d6e1fCD8D</b></li>
+                </p>
+			</body>
+		</html>"""
+    return render_template_string(html)
 
 
 @app.route('/callback', methods=['GET', 'POST'])
