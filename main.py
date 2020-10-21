@@ -25,7 +25,7 @@ if myenv == 'airbox' :
 else :
     url_callback = 'http://masociete.co/callback'
     talao_url = 'https://talao.co'
-    upload_path = '/home/admin/Talao/uploads/'
+    upload_path = '/home/admin/masociete/'
     client_id = 'EmiMhjC1gjNVMu7Sek6Hq0Gs'
     client_secret = '4O9qKnKWVU2dFlmM0eRWvR0SkBT2gndgt0G2o9HDXzKtjqXZ'
 
