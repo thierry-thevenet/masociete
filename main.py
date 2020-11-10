@@ -44,7 +44,7 @@ import jwt
 # Environment variables set in gunicornconf.py  and transfered to environment.py
 myenv = os.getenv('MYENV')
 
-# public RSA key to check JWT
+# public RSA key to check JWT (OpenID Connect)
 filename = "oauth_RSA_public.txt"
 try :
     fp = open(filename,"rb")
@@ -53,31 +53,43 @@ try :
 except :
     print('JWT private RSA key not found')
 
-
 version = '0.3'
 app = Flask(__name__)
 app.secret_key = 'ùmkljùmkjagzklj'
 
 
-# variable d'environment
-if myenv == 'airbox' :
+# variables d'environment
+if myenv == 'airbox-masociete' :
     url_callback = 'http://127.0.0.1:4000/callback'
     talao_url = 'http://127.0.0.1:3000'
     upload_path = '/home/thierry/Talao/uploads/'
     client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
     client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
-else :
+
+elif myenv == 'airbox-newco' :
+    url_callback = 'http://127.0.0.1:4000/callback'
+    talao_url = 'http://127.0.0.1:3000'
+    upload_path = '/home/thierry/Talao/uploads/'
+    client_id = 'DXfJZvRXdmudrbINyYrp1QnB'
+    client_secret = 'k9cENAebOwCoG2tMsNEIP5NZWYWWmNSHyWtMmLpAIYfBXLAT'
+
+elif myenv == 'airbox-talao' :
+    url_callback = 'http://127.0.0.1:4000/callback'
+    talao_url = 'http://127.0.0.1:3000'
+    upload_path = '/home/thierry/Talao/uploads/'
+    client_id = 'w64Jp7ZtCpk23QyjfUnklYsj'
+    client_secret = 'l71TC4j5bVZL5vVCIks95qiTVGS5BTqyRYGp0s74V8XEDRuB'
+
+elif myenv == 'aws' :
     url_callback = 'http://masociete.co/callback'
     talao_url = 'https://talao.co'
     upload_path = '/home/admin/masociete/'
     client_id = 'EmiMhjC1gjNVMu7Sek6Hq0Gs'
     client_secret = '4O9qKnKWVU2dFlmM0eRWvR0SkBT2gndgt0G2o9HDXzKtjqXZ'
 
-"""
-client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
-client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
-"""
-
+else :
+    print('erreur MYENV')
+    exit()
 
 # Talao as an OAuth2 Identity Provider
 talao_url_authorize = talao_url + '/api/v1/authorize'
@@ -86,6 +98,7 @@ talao_url_userinfo = talao_url + '/api/v1/user_info'
 talao_url_logout = talao_url + '/api/v1/oauth_logout'
 
 
+ #test de Openid connect flow
 @app.route('/sso', methods=['GET', 'POST'])
 def root():
     if request.method == 'POST':
@@ -178,7 +191,7 @@ def talao():
     print('demande access token/ id token  refusée')
     return 'User did not accept your access, demande access token/ id token  refusée'
 
-
+# call du logout de oauth 2.0/OIDC
 @app.route('/logout', methods=['POST'])
 def logout():
     if request.method == 'POST':
@@ -190,15 +203,17 @@ def logout():
         }
         return redirect(talao_url_logout + '?' + urlencode(data))
 
+# logout local de l appli
 @app.route('/post_logout', methods=['POST', 'GET'])
 def post_logout() :
     session.clear()
     return 'Game over !!!'
 
-# For logo only
+# update du logo pour le sso
 @app.route('/uploads/<filename>')
 def send_file(filename):
 	return send_from_directory(upload_path, filename)
+
 
 # This is the DID proof
 @app.route('/did/', methods=['GET'])
@@ -215,9 +230,13 @@ def did_check () :
 		</html>"""
 	return render_template_string(html)
 
+
+###############" TEST des API Client Credentials flow ##################"
+
 # test de client credentials pour creer une identité
 @app.route('/create_person_identity', methods=['GET', 'POST'])
 def create_person_identity():
+    print('my env = ', myenv)
     data = {
         'grant_type': 'client_credentials',
         'redirect_uri': "",
@@ -238,7 +257,7 @@ def create_person_identity():
     return 'demande de tokens refusée pour creer une identité'
 
 
-# test de client credentials pour obteni le status
+# test de client credentials pour obtenir le status
 @app.route('/get_status', methods=['GET', 'POST'])
 def get_status():
     data = {
@@ -263,9 +282,11 @@ def get_status():
 # wc de pauldupont 0xfA38BeA7A9b1946B645C16A99FB0eD07D168662b
 #did de test1 did:talao:talaonet:3B4bA595955c8E783aB565a9564D0E7F14a6CaaC
 
-# test de client credentials pour emettre un certificat
+
+# test de client credentials pour emettre un certificat d experience
 @app.route('/issue_experience', methods=['GET', 'POST'])
 def issue_experience():
+    print('my env = ', myenv)
     data = {
         'grant_type': 'client_credentials',
         'redirect_uri': "",
@@ -300,9 +321,11 @@ def issue_experience():
     return 'Demande de token refusée pour creer un certificat d experience'
 
 
-# test de client credentials pour emettre un certificat d agrement
+# test de client credentials pour emettre un certificat d agrement a une entreprise
 @app.route('/issue_agreement', methods=['GET', 'POST'])
 def issue_agreement():
+    print('my env = ', myenv)
+    print('client id =  ', client_id)
     data = {
         'grant_type': 'client_credentials',
         'redirect_uri': "",
@@ -318,22 +341,15 @@ def issue_agreement():
         print('step 3 demande envoyée sur final endpoint ')
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
         certificate = {
-	        "registration_number" : "2020-11-910151",
+	        "registration_number" : "2020-11-31003",
 	        "title" : "IQ - ISO9001:2020",
 	        "description" : "Quality Management Process",
             "standard" : "ISO 9001",
 	        "date_of_issue" : "2020-11-01",
 	        "valid_until" : "2030-10-31",
-	        "location" : "Paris",
-	        "service_product_group" : "3D Implementation",
+	        "location" : "Toulouse Bordeaux Paris",
+	        "service_product_group" : "Drone Serie production line",
 	    }
-
-# talao workspace contract 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
-# workspace contract de newco =  0xC15e3A2f17cD01c5A85F816165c455D9F954cBa9
-# workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
-# mettre dessous l'adresse du  destinataire du certificat dans {"did" :xxxx
-
-
         data = {'did' : 'did:talao:talaonet:5aE452b6fD5d77dB83F7c617299b6DA88abA915D', 'certificate' : certificate}
         response = requests.post(talao_url + '/api/v1/issue_agreement', data=json.dumps(data), headers=headers)
         return response.json()
@@ -342,10 +358,17 @@ def issue_agreement():
     return 'Demande de token refusée pour creer un certificat d agrement'
 
 
+# talao workspace contract 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
+# workspace contract de newco =  0xC15e3A2f17cD01c5A85F816165c455D9F954cBa9
+# workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
+# mettre dessous l'adresse du  destinataire du certificat dans {"did" :xxxx
+
 
 # test de client credentials pour emettre un certificat de reference
 @app.route('/issue_reference', methods=['GET', 'POST'])
 def issue_reference():
+    print('client id =  ', client_id)
+    print('my env = ', myenv)
     data = {
         'grant_type': 'client_credentials',
         'redirect_uri': "",
@@ -361,33 +384,66 @@ def issue_reference():
         print('step 3 demande envoyée sur final endpoint ')
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
         certificate = {
-            "project_title" : "Ligne de production moteur NFG-1000",
-            "project_description" : "Conception, réalisation et installation d'une nouvelle ligne de test",
-            "project_budget" : "1000000",
-            "project_staff" : "10",
-            "project_location" : "Toulouse",
-            "start_date" : "2019-02-22",
-            "end_date" : "2020-01-25",
-            "competencies" : ["CATIA V6",],
+            "project_title" : "Prototypage d'un objet connecté",
+            "project_description" : "Conception et prototypage",
+            "project_budget" : "95000",
+            "project_staff" : "3",
+            "project_location" : "Paris",
+            "start_date" : "2020-09-01",
+            "end_date" : "2020-10-31",
+            "competencies" : [],
             "score_recommendation" : 4,
-            "score_delivery" : 3,
+            "score_delivery" : 4,
             "score_schedule" : 4,
             "score_communication" : 4,
             "score_budget" : 4,
         }
-
-# workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
-# talao workspac contract 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
-# wc de newco =  0xC15e3A2f17cD01c5A85F816165c455D9F954cBa9
-# mettre dessous l'adresse du  destinataire du certificat dans {"did" :xxxx
-        data = {'did' : 'did:talao:talaonet:C15e3A2f17cD01c5A85F816165c455D9F954cBa9', 'certificate' : certificate}
+        data = {'did' : 'did:talao:talaonet:5aE452b6fD5d77dB83F7c617299b6DA88abA915D', 'certificate' : certificate}
         response = requests.post(talao_url + '/api/v1/issue_reference', data=json.dumps(data), headers=headers)
         return response.json()
     print('demande de token refusée')
     print('response : ', response.__dict__)
     return 'Demande de token refusée pour creer un certificat de reference'
 
+# workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
+# talao workspac contract 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
+# wc de newco =  0xC15e3A2f17cD01c5A85F816165c455D9F954cBa9
+# mettre dessous l'adresse du  destinataire du certificat dans {"did" :xxxx
 
+
+
+# test de client credentials pour obtenir une liste de certificat
+@app.route('/get_certificate_list', methods=['GET', 'POST'])
+def get_certificate_list():
+    data = {
+        'grant_type': 'client_credentials',
+        'redirect_uri': "",
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'code': "",
+        'scope' : ''
+    }
+    response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
+    print('step 2 : demande de token envoyée')
+    if response.status_code == 200 :
+        token_data = response.json()
+        print('step 3 demande envoyée')
+        headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
+        #did de newindus = did:talao:talaonet:5aE452b6fD5d77dB83F7c617299b6DA88abA915D
+        data = {'did' : 'did:talao:talaonet:5aE452b6fD5d77dB83F7c617299b6DA88abA915D', 'certificate_type' : 'reference'}
+        response = requests.post(talao_url + '/api/v1/get_certificate_list', data=json.dumps(data), headers=headers)
+        return response.json()
+    return 'demande de tokens refusée pour obtenir le status'
+
+
+
+
+
+
+
+
+
+# 127.0.0.1:4000
 if __name__ == '__main__':
     app.run( port=4000, debug =True)
 
