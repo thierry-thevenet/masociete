@@ -170,12 +170,12 @@ def root():
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
-            'nonce' :  'test',
+            'nonce' :  'test' + str(random.randint(0, 100)),
             'redirect_uri': url_callback,
             'scope': 'profile openid resume birthdate email phone',
         }
         session['state'] = data['state']
-        session['scope'] = 'user_info'
+        session['endpoint'] = 'user_info'
 
         print('step 1 : demande d autorisation envoyée ')
         return redirect(talao_url_authorize + '?' + urlencode(data))
@@ -204,10 +204,41 @@ def root_2():
             'state': str(random.randint(0, 99999)),
             'nonce' : 'test',
             'redirect_uri': url_callback,
-            'scope': 'user_manages_referent',
+            'scope': 'user:manage:referent',
         }
         session['state'] = data['state']
-        session['scope'] = data['scope']
+        session['endpoint'] = 'user_accepts_company_referent'
+        print('step 1 : demande d autorisation envoyée ')
+        return redirect(talao_url_authorize + '?' + urlencode(data))
+
+    else:
+        html = """
+           <!DOCTYPE html>
+           <html lang="en">
+           <body>
+               <form method=post enctype=multipart/form-data>
+                   <h3>Sign In with your Decentralized Identifier
+                   <input type="image" src="/uploads/talao2.png"></h3>
+               </form>
+            </body>
+            </html>
+        """
+        return render_template_string(html)
+
+#test de user_adds_referent avec redirection sur le login Talao.co
+@app.route('/user_adds_referent', methods=['GET', 'POST'])
+def root_3():
+    if request.method == 'POST':
+        data = {
+            'response_type': 'code',
+            'client_id': client_id,
+            'state': str(random.randint(0, 99999)),
+            'nonce' : 'test',
+            'redirect_uri': url_callback,
+            'scope': 'user:manage:referent',
+        }
+        session['state'] = data['state']
+        session['endpoint'] = 'user_adds_referent'
         print('step 1 : demande d autorisation envoyée ')
         return redirect(talao_url_authorize + '?' + urlencode(data))
 
@@ -228,7 +259,7 @@ def root_2():
 
  #test de user_issues_certificate avec redirection sur le login Talao.co
 @app.route('/user_issues_certificate', methods=['GET', 'POST'])
-def root_3():
+def root_4():
     if request.method == 'POST':
         data = {
             'response_type': 'code',
@@ -236,10 +267,10 @@ def root_3():
             'state': str(random.randint(0, 99999)),
             'nonce' : 'test',
             'redirect_uri': url_callback,
-            'scope': 'user_issues_certificate',
+            'scope': 'user:manage:certificate',
         }
         session['state'] = data['state']
-        session['scope'] = data['scope']
+        session['endpoint'] = 'user_issues_certificate'
         print('step 1 : demande d autorisation envoyée ')
         return redirect(talao_url_authorize + '?' + urlencode(data))
 
@@ -257,7 +288,7 @@ def root_3():
         """
         return render_template_string(html)
 
- # Callback avec call sur les 2 endpoints précédents
+ # Callback avec call sur les endpoints précédents
 @app.route('/callback', methods=['GET', 'POST'])
 def talao():
     print('request reçu dans /callback = ', request.args)
@@ -277,17 +308,23 @@ def talao():
     if response.status_code == 200:
         token_data = response.json()
         print('Access Token reçu = ', token_data['access_token'])
+        print('Refresh Token = ',token_data.get('refresh_token'))
+        session['id_token'] = token_data.get('id_token')
         # appel du endpoint selon la variable state
         params = {'schema': 'oauth2'}
         headers = {'Authorization': 'Bearer %s' % token_data['access_token']}
-        if session['scope'] == 'user_manages_referent' :
+
+
+        if session['endpoint'] == 'user_accepts_company_referent' :
             endpoint_response = requests.get('http://127.0.0.1:3000/api/v1/user_accepts_company_referent', params=params, headers=headers)
-        elif session['scope'] == 'user_info' :
+
+        elif session['endpoint'] == 'user_info' :
             # decryptage  du JWT
             print('JWT = ', jwt.decode(token_data.get('id_token'), rsa_key, algorithms=['RS256'], audience=client_id))
             # cell du endpoint
             endpoint_response = requests.get(talao_url_userinfo, params=params, headers=headers)
-        elif session['scope'] == 'user_issues_certificate' :
+
+        elif session['endpoint'] == 'user_issues_certificate' :
         # talao emet un certificat a thierrythevenet workspace contract = 0x81d8800eDC8f309ccb21472d429e039E0d9C79bB
         # talao est dans la referent list de thierrythevenet
             headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
@@ -303,8 +340,14 @@ def talao():
 	                }
             data = {'did_issued_to' : 'did:talao:talaonet:81d8800eDC8f309ccb21472d429e039E0d9C79bB', 'certificate_type' : 'agreement', 'certificate' : certificate}
             endpoint_response = requests.post(talao_url + '/api/v1/user_issues_certificate', data=json.dumps(data), headers=headers)
-        print('step 3 call du endpoint envoyé')
 
+        elif session['endpoint'] == 'user_adds_referent' :
+        # talao est ajouté comme referent a thierrythevenet Talao workspace contract = 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
+            headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
+            data = {'did_referent' : 'did:talao:talaonet:4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68'}
+            endpoint_response = requests.post(talao_url + '/api/v1/user_adds_referent', data=json.dumps(data), headers=headers)
+
+        print('step 3 call du endpoint envoyé')
         html = """
         <!DOCTYPE html>
         <html lang="en">
@@ -392,7 +435,7 @@ def issue_experience():
         'client_id': client_id,
         'client_secret': client_secret,
         'code': '',
-        'scope' : 'experience'
+        'scope' : 'client:issue:experience'
     }
     response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
     print('step 1 : demande de token envoyée')
@@ -430,7 +473,7 @@ def issue_agreement():
         'client_id': client_id,
         'client_secret': client_secret,
         'code': '',
-        'scope' : 'agreement'
+        'scope' : 'client:issue:agreement'
     }
     response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
     print('step 2 : demande de token envoyée')
@@ -473,7 +516,7 @@ def issue_reference():
         'client_id': client_id,
         'client_secret': client_secret,
         'code': '',
-        'scope' : 'reference'
+        'scope' : 'client:issue:reference'
     }
     response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
     print('step 2 : demande de token envoyée')
