@@ -105,7 +105,6 @@ talao_url_userinfo = talao_url + '/api/v1/user_info'
 talao_url_logout = talao_url + '/api/v1/oauth_logout'
 
 
-
 # home page local
 @app.route('/', methods=['GET', 'POST'])
 def login() :
@@ -385,7 +384,7 @@ def create_person_identity():
         'client_id': client_id,
         'client_secret': client_secret,
         'code': "",
-        'scope' : ''
+        'scope' : 'client:create:identity'
     }
     response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
     print('step 2 : demande de token envoyée')
