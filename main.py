@@ -22,13 +22,6 @@ $ python main.py
 
 on emet un certificat en appelant  une url sur le seveur l'application client, on a en retour un json qui s affiche 
 
-pour creer un certificat agreement :
-http://127.0.0.1:4000/issue_agreement
-
-pour creer un certificat reference
-http://127.0.0.1:4000/issue_reference
-
-
 
 # workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
 # talao workspac contract 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
@@ -105,19 +98,59 @@ talao_url_userinfo = talao_url + '/api/v1/user_info'
 talao_url_logout = talao_url + '/api/v1/oauth_logout'
 
 
-# home page local
+# home page local avec affichage du did et choix du test
 @app.route('/', methods=['GET', 'POST'])
 def login() :
-    html = """<html lang="en">
+    if request.method == 'GET':
+        html = """<html lang="en">
 			<body>
 				<h1>Website de Ma Société</h1>
                 <h2>Our Decentralized IDentifiers is : </h2>
                 <p>
                     <li><b>did:talao:talaonet:c5C1B070b46138AC3079cD9Bce10010d6e1fCD8D</b></li>
                 </p>
+                <form method="post" action="/" class="inline">
+                <input type="hidden" name="parametre">
+
+                <button type="submit" name="button" value="sso" class="link-button">
+                <b>Connect to this application with Talao Connect</b></button>
+                <br><br>
+                <button type="submit" name="button" value="user_accepts_company_referent" class="link-button">
+                <b>Endpoint user_accepts_company_referent</b></button>
+                <br><br>
+                <button type="submit" name="button" value="user_adds_referent" class="link-button">
+                <b>Endpoint user_adds_referent</b></button>
+                <br><br>
+                <button type="submit" name="button" value="user_issues_certificate" class="link-button">
+                <b>Endpoint user_issues_certificate</b></button>
+
+                <br><br>
+                <button type="submit" name="button" value="user_updates_company_settings" class="link-button">
+                <b>Endpoint user_updates_company_settings</b></button>
+
+                 <br><br>
+                <button type="submit" name="button" value="user_uploads_signature" class="link-button">
+                <b>Endpoint user_uploads_signature</b></button>
+
+                </form>
 			</body>
-		</html>"""
-    return render_template_string(html)
+		    </html>"""
+        return render_template_string(html)
+    if request.method == 'POST':
+        input = request.form['button']
+        print('input =', input)
+        if input == 'sso' :
+            return redirect('/sso')
+        elif input == 'user_accepts_company_referent' :
+            return redirect('/user_accepts_company_referent')
+        elif input == 'user_adds_referent' :
+            return redirect('/user_adds_referent')
+        elif input == 'user_issues_certificate' :
+            return redirect('/user_issues_certificate')
+        elif input == 'user_updates_company_settings' :
+            return redirect('/user_updates_company_settings')
+        elif input == 'user_uploads_signature' :
+            return redirect('/user_uploads_signature')
 
 
 # call du logout de oauth 2.0/OIDC
@@ -164,40 +197,23 @@ def did_check () :
  #test de Openid connect flow, login  de l application locale avec redirection sur le login Talao.co par OpenId Connect (scope openid)
 @app.route('/sso', methods=['GET', 'POST'])
 def root():
-    if request.method == 'POST':
-        data = {
+    data = {
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
-            'nonce' :  'test' + str(random.randint(0, 100)),
+            'nonce' :  'test2' + str(random.randint(0, 99999)),
             'redirect_uri': url_callback,
-            'scope': 'profile openid resume birthdate email phone',
+            'scope': 'openid profile address email',
         }
-        session['state'] = data['state']
-        session['endpoint'] = 'user_info'
-
-        print('step 1 : demande d autorisation envoyée ')
-        return redirect(talao_url_authorize + '?' + urlencode(data))
-
-    else:
-        html = """
-           <!DOCTYPE html>
-           <html lang="en">
-           <body>
-               <form method=post enctype=multipart/form-data>
-                   <h3>Sign In with your Decentralized Identifier
-                   <input type="image" src="/uploads/talao2.png"></h3>
-               </form>
-            </body>
-            </html>
-        """
-        return render_template_string(html)
+    session['state'] = data['state']
+    session['endpoint'] = 'user_info'
+    print('step 1 : demande d autorisation envoyée ')
+    return redirect(talao_url_authorize + '?' + urlencode(data))
 
  #test de user_accepts_company_referent avec redirection sur le login Talao.co
 @app.route('/user_accepts_company_referent', methods=['GET', 'POST'])
 def root_2():
-    if request.method == 'POST':
-        data = {
+    data = {
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
@@ -205,30 +221,16 @@ def root_2():
             'redirect_uri': url_callback,
             'scope': 'user:manage:referent',
         }
-        session['state'] = data['state']
-        session['endpoint'] = 'user_accepts_company_referent'
-        print('step 1 : demande d autorisation envoyée ')
-        return redirect(talao_url_authorize + '?' + urlencode(data))
+    session['state'] = data['state']
+    session['endpoint'] = 'user_accepts_company_referent'
+    print('step 1 : demande d autorisation envoyée ')
+    return redirect(talao_url_authorize + '?' + urlencode(data))
 
-    else:
-        html = """
-           <!DOCTYPE html>
-           <html lang="en">
-           <body>
-               <form method=post enctype=multipart/form-data>
-                   <h3>Sign In with your Decentralized Identifier
-                   <input type="image" src="/uploads/talao2.png"></h3>
-               </form>
-            </body>
-            </html>
-        """
-        return render_template_string(html)
 
 #test de user_adds_referent avec redirection sur le login Talao.co
 @app.route('/user_adds_referent', methods=['GET', 'POST'])
 def root_3():
-    if request.method == 'POST':
-        data = {
+    data = {
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
@@ -236,31 +238,16 @@ def root_3():
             'redirect_uri': url_callback,
             'scope': 'user:manage:referent',
         }
-        session['state'] = data['state']
-        session['endpoint'] = 'user_adds_referent'
-        print('step 1 : demande d autorisation envoyée ')
-        return redirect(talao_url_authorize + '?' + urlencode(data))
-
-    else:
-        html = """
-           <!DOCTYPE html>
-           <html lang="en">
-           <body>
-               <form method=post enctype=multipart/form-data>
-                   <h3>Sign In with your Decentralized Identifier
-                   <input type="image" src="/uploads/talao2.png"></h3>
-               </form>
-            </body>
-            </html>
-        """
-        return render_template_string(html)
+    session['state'] = data['state']
+    session['endpoint'] = 'user_adds_referent'
+    print('step 1 : demande d autorisation envoyée ')
+    return redirect(talao_url_authorize + '?' + urlencode(data))
 
 
  #test de user_issues_certificate avec redirection sur le login Talao.co
 @app.route('/user_issues_certificate', methods=['GET', 'POST'])
 def root_4():
-    if request.method == 'POST':
-        data = {
+    data = {
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
@@ -268,24 +255,47 @@ def root_4():
             'redirect_uri': url_callback,
             'scope': 'user:manage:certificate',
         }
-        session['state'] = data['state']
-        session['endpoint'] = 'user_issues_certificate'
-        print('step 1 : demande d autorisation envoyée ')
-        return redirect(talao_url_authorize + '?' + urlencode(data))
+    session['state'] = data['state']
+    session['endpoint'] = 'user_issues_certificate'
+    print('step 1 : demande d autorisation envoyée ')
+    return redirect(talao_url_authorize + '?' + urlencode(data))
 
-    else:
-        html = """
-           <!DOCTYPE html>
-           <html lang="en">
-           <body>
-               <form method=post enctype=multipart/form-data>
-                   <h3>Sign In with your Decentralized Identifier
-                   <input type="image" src="/uploads/talao2.png"></h3>
-               </form>
-            </body>
-            </html>
-        """
-        return render_template_string(html)
+
+
+ #test de user_updates_company_settings
+@app.route('/user_updates_company_settings', methods=['GET', 'POST'])
+def root_5():
+    data = {
+            'response_type': 'code',
+            'client_id': client_id,
+            'state': str(random.randint(0, 99999)),
+            'nonce' : 'test',
+            'redirect_uri': url_callback,
+            'scope': 'user:manage:data',
+        }
+    session['state'] = data['state']
+    session['endpoint'] = 'user_updates_company_settings'
+    print('step 1 : demande d autorisation envoyée ')
+    return redirect(talao_url_authorize + '?' + urlencode(data))
+
+
+
+ #test de user_uploads signature
+@app.route('/user_uploads_signature', methods=['GET', 'POST'])
+def root_6():
+    data = {
+            'response_type': 'code',
+            'client_id': client_id,
+            'state': str(random.randint(0, 99999)),
+            'nonce' : 'test',
+            'redirect_uri': url_callback,
+            'scope': 'user:manage:data',
+        }
+    session['state'] = data['state']
+    session['endpoint'] = 'user_uploads_signature'
+    print('step 1 : demande d autorisation envoyée ')
+    return redirect(talao_url_authorize + '?' + urlencode(data))
+
 
  # Callback avec call sur les endpoints précédents
 @app.route('/callback', methods=['GET', 'POST'])
@@ -307,19 +317,20 @@ def talao():
     if response.status_code == 200:
         token_data = response.json()
         print('Access Token reçu = ', token_data['access_token'])
-        print('Refresh Token = ',token_data.get('refresh_token'))
+        #print('Refresh Token = ',token_data.get('refresh_token'))
         session['id_token'] = token_data.get('id_token')
+        # decryptage  du JWT
+        if token_data.get('id_token') :
+            print('JWT = ', jwt.decode(token_data.get('id_token'), rsa_key, algorithms=['RS256'], audience=client_id))
+        #session['id_token'] = token_data.get('id_token')
         # appel du endpoint selon la variable state
         params = {'schema': 'oauth2'}
         headers = {'Authorization': 'Bearer %s' % token_data['access_token']}
-
 
         if session['endpoint'] == 'user_accepts_company_referent' :
             endpoint_response = requests.get('http://127.0.0.1:3000/api/v1/user_accepts_company_referent', params=params, headers=headers)
 
         elif session['endpoint'] == 'user_info' :
-            # decryptage  du JWT
-            print('JWT = ', jwt.decode(token_data.get('id_token'), rsa_key, algorithms=['RS256'], audience=client_id))
             # cell du endpoint
             endpoint_response = requests.get(talao_url_userinfo, params=params, headers=headers)
 
@@ -345,6 +356,17 @@ def talao():
             headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
             data = {'did_referent' : 'did:talao:talaonet:4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68'}
             endpoint_response = requests.post(talao_url + '/api/v1/user_adds_referent', data=json.dumps(data), headers=headers)
+
+        elif session['endpoint'] == 'user_updates_company_settings' :
+            headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
+            data = {'staff' : "6"}
+            endpoint_response = requests.post(talao_url + '/api/v1/user_updates_company_settings', data=json.dumps(data), headers=headers)
+
+        elif session['endpoint'] == 'user_uploads_signature' :
+            headers = {'Authorization': 'Bearer %s' % token_data['access_token']}
+            signature = {'image': open('signature.png', 'rb')}
+            #r = requests.post(url, files=my_img)
+            endpoint_response = requests.post(talao_url + '/api/v1/user_uploads_signature', files=signature, headers=headers)
 
         print('step 3 call du endpoint envoyé')
         html = """
@@ -374,10 +396,9 @@ def talao():
 
 ###############" TEST des API Client Credentials flow ##################"
 
-# test de client credentials pour creer une identité
+# test de client credentials pour creer l'identité d une personne
 @app.route('/create_person_identity', methods=['GET', 'POST'])
 def create_person_identity():
-    print('my env = ', myenv)
     data = {
         'grant_type': 'client_credentials',
         'redirect_uri': "",
@@ -392,11 +413,34 @@ def create_person_identity():
         token_data = response.json()
         print('step 3 demande envoyée')
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
-        data = {'firstname' : 'pierre', 'lastname' : 'Dupont', 'email' : 'pierre.dupont@talao.co'}
+        data = {'firstname' : 'pierre', 'lastname' : 'Dupont', 'email' : 'pierre.dupont@talao.co', 'send_email' : False} # no email"
         response = requests.post(talao_url + '/api/v1/create_person_identity', data=json.dumps(data), headers=headers)
         return response.json()
     return 'demande de tokens refusée pour creer une identité'
 
+
+
+# test de client credentials pour creer l'identité d une company
+@app.route('/create_company_identity', methods=['GET', 'POST'])
+def create_company_identity():
+    data = {
+        'grant_type': 'client_credentials',
+        'redirect_uri': "",
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'code': "",
+        'scope' : 'client:create:identity'
+    }
+    response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
+    print('step 2 : demande de token envoyée')
+    if response.status_code == 200 :
+        token_data = response.json()
+        print('step 3 demande envoyée')
+        headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
+        data = {'name' : 'companytest4', 'email' : 'pierre.dupont@talao.co'} # with email
+        response = requests.post(talao_url + '/api/v1/create_company_identity', data=json.dumps(data), headers=headers)
+        return response.json()
+    return 'demande de tokens refusée pour creer une identité'
 
 # test de client credentials pour obtenir le status
 @app.route('/get_status', methods=['GET', 'POST'])
@@ -443,7 +487,7 @@ def issue_experience():
         print('step 2 demande envoyée sur final endpoint ')
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
         certificate = {
-	    "title" : "Développement d'un provider OpenID Connect",
+	    "title" : "Test : Développement d'un provider OpenID Connect",
 	    "description" : "Conception et réalisation d'une application de gestion d'identité numérique sur la blockchain.",
 	    "start_date" : "2020-02-15",
 	    "end_date" : "2020-10-25",
@@ -453,7 +497,8 @@ def issue_experience():
 	    "score_schedule" : 4,
 	    "score_communication" : 4,
 	    }
-        data = {'did' : 'did:talao:talaonet:fA38BeA7A9b1946B645C16A99FB0eD07D168662b', 'certificate' : certificate}
+        # 0x81d8800eDC8f309ccb21472d429e039E0d9C79bB Thierrythevenet
+        data = {'did' : 'did:talao:talaonet:81d8800eDC8f309ccb21472d429e039E0d9C79bB', 'certificate' : certificate}
         response = requests.post(talao_url + '/api/v1/issue_experience', data=json.dumps(data), headers=headers)
         return response.json()
     print('demande de token refusée')
@@ -570,14 +615,14 @@ def get_certificate_list():
         print('step 3 demande envoyée')
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
         #did de newindus = did:talao:talaonet:5aE452b6fD5d77dB83F7c617299b6DA88abA915D
-        data = {'did' : 'did:talao:talaonet:5aE452b6fD5d77dB83F7c617299b6DA88abA915D', 'certificate_type' : 'reference'}
+        data = {'did' : 'did:talao:talaonet:81d8800eDC8f309ccb21472d429e039E0d9C79bB', 'certificate_type' : 'all'}
         response = requests.post(talao_url + '/api/v1/get_certificate_list', data=json.dumps(data), headers=headers)
         return response.json()
     return 'demande de tokens refusée pour obtenir le status'
 
 
 
-# test de client credentials pour obtenir une liste de certificat
+# test de client credentials pour obtenir un certificat
 @app.route('/get_certificate', methods=['GET', 'POST'])
 def get_certificate():
     data = {
