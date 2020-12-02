@@ -15,10 +15,6 @@ pour changer le contenu d'un certificat regarder le code sous la vue '/issue_agr
 les vues sont à la fin du code
 
 
-Utilisation
-************
-$ export MYENV=airbox
-$ python main.py
 
 on emet un certificat en appelant  une url sur le seveur l'application client, on a en retour un json qui s affiche 
 
@@ -34,7 +30,7 @@ on emet un certificat en appelant  une url sur le seveur l'application client, o
 
 from urllib.parse import urlencode
 import requests
-from flask import Flask, redirect, request, render_template_string, session, send_from_directory
+from flask import Flask, redirect, request, render_template_string, session, send_from_directory, jsonify
 import json
 import os
 import random
@@ -44,42 +40,18 @@ import jwt
 # Environment variables set in gunicornconf.py  and transfered to environment.py
 myenv = os.getenv('MYENV')
 
-# public RSA key to check JWT (OpenID Connect)
-filename = "oauth_RSA_public.txt"
-try :
-    fp = open(filename,"rb")
-    rsa_key = fp.read()
-    fp.close()
-except :
-    print('JWT private RSA key not found')
-
 version = '0.4.1'
 app = Flask(__name__)
 app.secret_key = 'ùmkljùmkjagzklj'
 
 
-# variables d'environment
-if myenv == 'airbox-masociete' :
-    url_callback = 'http://127.0.0.1:4000/callback'
-    talao_url = 'http://127.0.0.1:3000'
-    upload_path = '/home/thierry/Talao/uploads/'
-    client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
-    client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
+url_callback = 'http://127.0.0.1:4000/callback'
+talao_url = 'http://127.0.0.1:3000'
+upload_path = '/home/thierry/Talao/uploads/'
+client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
+client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
 
-elif myenv == 'airbox-newco' :
-    url_callback = 'http://127.0.0.1:4000/callback'
-    talao_url = 'http://127.0.0.1:3000'
-    upload_path = '/home/thierry/Talao/uploads/'
-    client_id = 'DXfJZvRXdmudrbINyYrp1QnB'
-    client_secret = 'k9cENAebOwCoG2tMsNEIP5NZWYWWmNSHyWtMmLpAIYfBXLAT'
-
-elif myenv == 'airbox-talao' :
-    url_callback = 'http://127.0.0.1:4000/callback'
-    talao_url = 'http://127.0.0.1:3000'
-    upload_path = '/home/thierry/Talao/uploads/'
-    client_id = 'w64Jp7ZtCpk23QyjfUnklYsj'
-    client_secret = 'l71TC4j5bVZL5vVCIks95qiTVGS5BTqyRYGp0s74V8XEDRuB'
-
+"""
 elif myenv == 'aws' :
     url_callback = 'http://masociete.co/callback'
     talao_url = 'https://talao.co'
@@ -90,6 +62,7 @@ elif myenv == 'aws' :
 else :
     print('erreur MYENV')
     exit()
+"""
 
 # Talao as an OAuth2 Identity Provider
 talao_url_authorize = talao_url + '/api/v1/authorize'
@@ -138,7 +111,6 @@ def login() :
         return render_template_string(html)
     if request.method == 'POST':
         input = request.form['button']
-        print('input =', input)
         if input == 'sso' :
             return redirect('/sso')
         elif input == 'user_accepts_company_referent' :
@@ -178,9 +150,10 @@ def send_file(filename):
 
 
 # This is the DID proof
-@app.route('/did/', methods=['GET'])
+@app.route('/did/', methods=['GET', 'POST'])
 def did_check () :
-	html = """<!DOCTYPE html>
+    if request.method == 'GET' :
+	    html = """<!DOCTYPE html>
 		<html lang="en">
 			<body>
 				<h1>MaSociete.co</h1>
@@ -190,7 +163,12 @@ def did_check () :
                 </p>
 			</body>
 		</html>"""
-	return render_template_string(html)
+	    return render_template_string(html)
+    if request.method == 'POST' :
+        print('request = ', request.__dict__)
+        print('code reçu = ', request.form.get('code'))
+        return jsonify({"code" : request.form.get('code')}), 200
+
 
 ###############" TEST des API Authorization code flow ##################"
 
@@ -203,7 +181,7 @@ def root():
             'state': str(random.randint(0, 99999)),
             'nonce' :  'test2' + str(random.randint(0, 99999)),
             'redirect_uri': url_callback,
-            'scope': 'openid profile address email',
+            'scope': 'openid email address profile',
         }
     session['state'] = data['state']
     session['endpoint'] = 'user_info'
@@ -261,7 +239,6 @@ def root_4():
     return redirect(talao_url_authorize + '?' + urlencode(data))
 
 
-
  #test de user_updates_company_settings
 @app.route('/user_updates_company_settings', methods=['GET', 'POST'])
 def root_5():
@@ -277,8 +254,6 @@ def root_5():
     session['endpoint'] = 'user_updates_company_settings'
     print('step 1 : demande d autorisation envoyée ')
     return redirect(talao_url_authorize + '?' + urlencode(data))
-
-
 
  #test de user_uploads signature
 @app.route('/user_uploads_signature', methods=['GET', 'POST'])
@@ -314,29 +289,36 @@ def talao():
     }
     response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
     print('step 2 : demande d un Access Token envoyée')
+
     if response.status_code == 200:
         token_data = response.json()
         print('Access Token reçu = ', token_data['access_token'])
         #print('Refresh Token = ',token_data.get('refresh_token'))
         session['id_token'] = token_data.get('id_token')
-        # decryptage  du JWT
+
+        # decryptage  du JWT et verification de la signature avec la cle RSA publique de Talao
         if token_data.get('id_token') :
-            print('JWT = ', jwt.decode(token_data.get('id_token'), rsa_key, algorithms=['RS256'], audience=client_id))
-        #session['id_token'] = token_data.get('id_token')
-        # appel du endpoint selon la variable state
-        params = {'schema': 'oauth2'}
+            private_rsa_key = privatekey.get_key(mode.owner_talao, 'rsa_key', mode)
+			RSA_KEY = RSA.import_key(private_rsa_key)
+			public_rsa_key = RSA_KEY.publickey().export_key('PEM').decode('utf-8')
+            try :
+                JWT = jwt.decode(token_data.get('id_token'),public_rsa_key, algorithms=header['alg'], audience=client_id)
+                print('JWT = ', JWT)
+            except Exception as e : # echec verification de la signature
+                print(e)
+
+        # appel du endpoint selon la variable endpoint
         headers = {'Authorization': 'Bearer %s' % token_data['access_token']}
 
         if session['endpoint'] == 'user_accepts_company_referent' :
-            endpoint_response = requests.get('http://127.0.0.1:3000/api/v1/user_accepts_company_referent', params=params, headers=headers)
+            endpoint_response = requests.post('http://127.0.0.1:3000/api/v1/user_accepts_company_referent', headers=headers)
 
-        elif session['endpoint'] == 'user_info' :
-            # cell du endpoint
-            endpoint_response = requests.get(talao_url_userinfo, params=params, headers=headers)
+        elif session['endpoint'] == 'user_info' : #OIDC standard call
+            endpoint_response = requests.get(talao_url_userinfo, headers=headers)
 
         elif session['endpoint'] == 'user_issues_certificate' :
-        # talao emet un certificat a thierrythevenet workspace contract = 0x81d8800eDC8f309ccb21472d429e039E0d9C79bB
-        # talao est dans la referent list de thierrythevenet
+            # talao emet un certificat a thierrythevenet workspace contract = 0x81d8800eDC8f309ccb21472d429e039E0d9C79bB
+            # talao est dans la referent list de thierrythevenet
             headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
             certificate = {
 	                "registration_number" : "2020-11-75012",
@@ -352,7 +334,7 @@ def talao():
             endpoint_response = requests.post(talao_url + '/api/v1/user_issues_certificate', data=json.dumps(data), headers=headers)
 
         elif session['endpoint'] == 'user_adds_referent' :
-        # talao est ajouté comme referent a thierrythevenet Talao workspace contract = 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
+            # talao est ajouté comme referent a thierrythevenet Talao workspace contract = 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
             headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
             data = {'did_referent' : 'did:talao:talaonet:4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68'}
             endpoint_response = requests.post(talao_url + '/api/v1/user_adds_referent', data=json.dumps(data), headers=headers)
@@ -365,7 +347,6 @@ def talao():
         elif session['endpoint'] == 'user_uploads_signature' :
             headers = {'Authorization': 'Bearer %s' % token_data['access_token']}
             signature = {'image': open('signature.png', 'rb')}
-            #r = requests.post(url, files=my_img)
             endpoint_response = requests.post(talao_url + '/api/v1/user_uploads_signature', files=signature, headers=headers)
 
         print('step 3 call du endpoint envoyé')
@@ -389,8 +370,8 @@ def talao():
         """
         return render_template_string(html, endpoint_response=endpoint_response)
     print('demande access token/ id token  refusée')
+    print('response.status_code = ', response.status_code)
     return 'User did not accept your access, demande access token/ id token  refusée'
-
 
 
 
@@ -417,7 +398,6 @@ def create_person_identity():
         response = requests.post(talao_url + '/api/v1/create_person_identity', data=json.dumps(data), headers=headers)
         return response.json()
     return 'demande de tokens refusée pour creer une identité'
-
 
 
 # test de client credentials pour creer l'identité d une company
