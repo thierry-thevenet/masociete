@@ -40,7 +40,7 @@ import jwt
 # Environment variables set in gunicornconf.py  and transfered to environment.py
 myenv = os.getenv('MYENV')
 
-version = '0.4.1'
+version = '0.5'
 app = Flask(__name__)
 app.secret_key = 'ùmkljùmkjagzklj'
 
@@ -51,18 +51,13 @@ upload_path = '/home/thierry/Talao/uploads/'
 client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
 client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
 
-"""
-elif myenv == 'aws' :
+
+if myenv == 'aws' :
     url_callback = 'http://masociete.co/callback'
     talao_url = 'https://talao.co'
     upload_path = '/home/admin/masociete/'
     client_id = 'EmiMhjC1gjNVMu7Sek6Hq0Gs'
     client_secret = '4O9qKnKWVU2dFlmM0eRWvR0SkBT2gndgt0G2o9HDXzKtjqXZ'
-
-else :
-    print('erreur MYENV')
-    exit()
-"""
 
 # Talao as an OAuth2 Identity Provider
 talao_url_authorize = talao_url + '/api/v1/authorize'
@@ -299,8 +294,8 @@ def talao():
         # decryptage  du JWT et verification de la signature avec la cle RSA publique de Talao
         if token_data.get('id_token') :
             private_rsa_key = privatekey.get_key(mode.owner_talao, 'rsa_key', mode)
-			RSA_KEY = RSA.import_key(private_rsa_key)
-			public_rsa_key = RSA_KEY.publickey().export_key('PEM').decode('utf-8')
+            RSA_KEY = RSA.import_key(private_rsa_key)
+            public_rsa_key = RSA_KEY.publickey().export_key('PEM').decode('utf-8')
             try :
                 JWT = jwt.decode(token_data.get('id_token'),public_rsa_key, algorithms=header['alg'], audience=client_id)
                 print('JWT = ', JWT)
