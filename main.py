@@ -27,7 +27,6 @@ on emet un certificat en appelant  une url sur le seveur l'application client, o
 
 """
 
-
 from urllib.parse import urlencode
 import requests
 from flask import Flask, redirect, request, render_template_string, session, send_from_directory, jsonify
@@ -36,6 +35,14 @@ import os
 import random
 import jwt
 
+
+filename = './talao_rsa_publickey.pem'
+try :
+	fp = open(filename,"r")
+	talao_public_rsa_key = fp.read()
+	fp.close()
+except :
+    print('RSA public key of API Server not found')
 
 # Environment variables set in gunicornconf.py  and transfered to environment.py
 myenv = os.getenv('MYENV')
@@ -101,6 +108,8 @@ def login() :
                 <b>Endpoint user_uploads_signature</b></button>
 
                 </form>
+                <br>
+                <a href="https://talao.co/create_company_ext"> Lien vers la page CCI</a>
 			</body>
 		    </html>"""
         return render_template_string(html)
@@ -143,8 +152,7 @@ def post_logout() :
 def send_file(filename):
 	return send_from_directory(upload_path, filename)
 
-
-# This is the DID proof
+# This is the DID proof (on_line_checking)
 @app.route('/did/', methods=['GET', 'POST'])
 def did_check () :
     if request.method == 'GET' :
@@ -160,8 +168,7 @@ def did_check () :
 		</html>"""
 	    return render_template_string(html)
     if request.method == 'POST' :
-        print('request = ', request.__dict__)
-        print('code reçu = ', request.form.get('code'))
+        print('code reçu et renvoyé pour DID proof = ', request.form.get('code'))
         return jsonify({"code" : request.form.get('code')}), 200
 
 
@@ -293,11 +300,8 @@ def talao():
 
         # decryptage  du JWT et verification de la signature avec la cle RSA publique de Talao
         if token_data.get('id_token') :
-            private_rsa_key = privatekey.get_key(mode.owner_talao, 'rsa_key', mode)
-            RSA_KEY = RSA.import_key(private_rsa_key)
-            public_rsa_key = RSA_KEY.publickey().export_key('PEM').decode('utf-8')
             try :
-                JWT = jwt.decode(token_data.get('id_token'),public_rsa_key, algorithms=header['alg'], audience=client_id)
+                JWT = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience=client_id)
                 print('JWT = ', JWT)
             except Exception as e : # echec verification de la signature
                 print(e)
