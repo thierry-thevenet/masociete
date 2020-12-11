@@ -109,7 +109,8 @@ def login() :
 
                 </form>
                 <br>
-                <a href="https://talao.co/create_company_ext"> Lien vers la page CCI</a>
+                <a href="http://127.0.0.1:3000/create_company_cci/"> Lien vers la page CCI (locale)</a><br>
+                <a href="https://talao.co/create_company_cci/"> Lien vers la page CCI (AWS)</a>
 			</body>
 		    </html>"""
         return render_template_string(html)
@@ -145,7 +146,8 @@ def logout():
 @app.route('/post_logout', methods=['POST', 'GET'])
 def post_logout() :
     session.clear()
-    return 'Game over !!!'
+    print('Game over !!!')
+    return redirect('/')
 
 # update du logo pour le sso
 @app.route('/uploads/<filename>')
