@@ -63,8 +63,8 @@ if myenv == 'aws' :
     url_callback = 'http://masociete.co/callback'
     talao_url = 'https://talao.co'
     upload_path = '/home/admin/masociete/'
-    client_id = 'EmiMhjC1gjNVMu7Sek6Hq0Gs'
-    client_secret = '4O9qKnKWVU2dFlmM0eRWvR0SkBT2gndgt0G2o9HDXzKtjqXZ'
+    client_id = '2HboyZfdKfxObtGWMCJmyISx'
+    client_secret = 'F8OpLCLeGduHJ8DfepZOuClTqNcw7zrsrX6PnoImtmsERzSN'
 
 # Talao as an OAuth2 Identity Provider
 talao_url_authorize = talao_url + '/api/v1/authorize'
