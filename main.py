@@ -29,7 +29,7 @@ on emet un certificat en appelant  une url sur le seveur l'application client, o
 
 from urllib.parse import urlencode
 import requests
-from flask import Flask, redirect, request, render_template_string, session, send_from_directory, jsonify
+from flask import Flask, redirect, request, render_template_string, session, send_from_directory, jsonify, render_template
 import json
 import os
 import random
@@ -113,7 +113,9 @@ def login() :
                 <a href="https://talao.co/create_company_cci/"> Lien vers la page CCI (AWS)</a>
 			</body>
 		    </html>"""
-        return render_template_string(html)
+        #return render_template_string(html)
+        return render_template('index.html')
+
     if request.method == 'POST':
         input = request.form['button']
         if input == 'sso' :
@@ -185,7 +187,7 @@ def root():
             'state': str(random.randint(0, 99999)),
             'nonce' :  'test2' + str(random.randint(0, 99999)),
             'redirect_uri': url_callback,
-            'scope': 'openid email address profile',
+            'scope': 'openid email address resume profile',
         }
     session['state'] = data['state']
     session['endpoint'] = 'user_info'
@@ -356,7 +358,7 @@ def talao():
         <html lang="en">
         <body>
         <h2>Vous etes maintenant connecté au site Web de Ma Societe.</h2>
-        <h3> Data received from your Decentralized ID : </h3>
+        <h3> Data reçue depuis votre Identité Numérique : </h3>
         <p>
         {% for key, value in endpoint_response.json().items() %}
         <div>{{key}}: {{value}}</div>
@@ -550,11 +552,11 @@ def issue_reference():
         print('step 3 demande envoyée sur final endpoint ')
         headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer %s' % token_data['access_token']}
         certificate = {
-            "project_title" : "Prototypage d'un objet connecté",
-            "project_description" : "Conception et prototypage",
-            "project_budget" : "95000",
-            "project_staff" : "3",
-            "project_location" : "Paris",
+            "title" : "Prototypage d'un objet connecté",
+            "description" : "Conception et prototypage",
+            "budget" : "95000",
+            "staff" : "3",
+            "location" : "Paris",
             "start_date" : "2020-09-01",
             "end_date" : "2020-10-31",
             "competencies" : [],
