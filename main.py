@@ -29,7 +29,7 @@ on emet un certificat en appelant  une url sur le seveur l'application client, o
 
 from urllib.parse import urlencode
 import requests
-from flask import Flask, redirect, request, render_template_string, session, send_from_directory, jsonify, render_template
+from flask import Flask, redirect, request, render_template_string, session, send_from_directory, jsonify, render_template, flash
 import json
 import os
 import random
@@ -57,6 +57,9 @@ talao_url = 'http://127.0.0.1:3000'
 upload_path = '/home/thierry/Talao/uploads/'
 client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
 client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
+post_logout = 'http://1227.0.0.1:4000/post_logout',
+
+
 
 
 if myenv == 'aws' :
@@ -65,6 +68,7 @@ if myenv == 'aws' :
     upload_path = '/home/admin/masociete/'
     client_id = 'JrUy80uksqpJ5cmA5YY6Re8P'
     client_secret = 'fEpPyVXZsguFsjhQaD118q7WUEbvv8jlDhoFPoKMMpJpEbzR'
+    post_logout = 'http://masociete.co/post_logout',
 
 # Talao as an OAuth2 Identity Provider
 talao_url_authorize = talao_url + '/api/v1/authorize'
@@ -140,7 +144,7 @@ def logout():
         data = {
         'id_token_hint': id_token,
         'state': 'test',
-        'post_logout_redirect_uri': 'http://masociete.co/post_logout',
+        'post_logout_redirect_uri': post_logout,
         }
         return redirect(talao_url_logout + '?' + urlencode(data))
 
@@ -374,7 +378,8 @@ def talao():
         return render_template_string(html, endpoint_response=endpoint_response)
     print('demande access token/ id token  refusée')
     print('response.status_code = ', response.status_code)
-    return 'User did not accept your access, demande access token/ id token  refusée'
+    flash('Identity not found !', 'danger')
+    return redirect('/')
 
 
 

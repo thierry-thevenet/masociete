@@ -14,11 +14,23 @@
 </head>
 
 <body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div id="successMessage" class="alert alert-{{ category }} alert-dismissible fade show m-0" role="alert">
+      <span>{{ message }}</span>
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
     <div class="container-fluid">
         <div class="row mh-100vh">
             <div class="col-10 col-sm-8 col-md-6 col-lg-6 offset-1 offset-sm-2 offset-md-3 offset-lg-0 align-self-center d-lg-flex align-items-lg-center align-self-lg-stretch bg-white p-5 rounded rounded-lg-0 my-5 my-lg-0" id="login-block">
                 <div class="m-auto w-lg-75 w-xl-50">
-                    <h2 class="text-info font-weight-light mb-5">&nbsp;City.Recruitment.Web</h2>
+                    <h2 class="text-info font-weight-light mb-5">&nbsp;City.Recruitment</h2>
                     <h4 class="text-info font-weight-light mb-5">&nbsp;Leave your resume, find a job in your city.</h4>
 
                     <form  method="post" action='/'>
