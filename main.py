@@ -57,7 +57,7 @@ talao_url = 'http://127.0.0.1:3000'
 upload_path = '/home/thierry/Talao/uploads/'
 client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
 client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
-post_logout = 'http://1227.0.0.1:4000/post_logout',
+post_logout_uri = 'http://127.0.0.1:4000/post_logout'
 
 
 
@@ -68,7 +68,7 @@ if myenv == 'aws' :
     upload_path = '/home/admin/masociete/'
     client_id = 'JrUy80uksqpJ5cmA5YY6Re8P'
     client_secret = 'fEpPyVXZsguFsjhQaD118q7WUEbvv8jlDhoFPoKMMpJpEbzR'
-    post_logout = 'http://masociete.co/post_logout',
+    post_logout_uri = 'http://masociete.co/post_logout'
 
 # Talao as an OAuth2 Identity Provider
 talao_url_authorize = talao_url + '/api/v1/authorize'
@@ -144,7 +144,7 @@ def logout():
         data = {
         'id_token_hint': id_token,
         'state': 'test',
-        'post_logout_redirect_uri': post_logout,
+        'post_logout_redirect_uri': post_logout_uri,
         }
         return redirect(talao_url_logout + '?' + urlencode(data))
 
@@ -189,9 +189,9 @@ def root():
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
-            'nonce' :  'test2' + str(random.randint(0, 99999)),
+            'nonce' :  str(random.randint(0, 99999)),
             'redirect_uri': url_callback,
-            'scope': 'openid email address resume profile',
+            'scope': 'openid email address resume profile phone ',
         }
     session['state'] = data['state']
     session['endpoint'] = 'user_info'
@@ -305,11 +305,10 @@ def talao():
         print('Access Token reçu = ', token_data['access_token'])
         #print('Refresh Token = ',token_data.get('refresh_token'))
         session['id_token'] = token_data.get('id_token')
-
         # decryptage  du JWT et verification de la signature avec la cle RSA publique de Talao
         if token_data.get('id_token') :
             try :
-                JWT = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience=client_id)
+                JWT = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience= 'did:talao:talaonet:EE09654eEdaA79429F8D216fa51a129db0f72250')
                 print('JWT = ', JWT)
             except Exception as e : # echec verification de la signature
                 print(e)
