@@ -9,15 +9,9 @@ faire tourner en local le serveur talao.co a l'addresse 127.0.0.1:3000
 update de  la variable d environment upload_path
 
 l issuer est toujours "masociete"
-
 pour changer le contenu d'un certificat regarder le code sous la vue '/issue_agreement'
-
 les vues sont à la fin du code
-
-
-
 on emet un certificat en appelant  une url sur le seveur l'application client, on a en retour un json qui s affiche 
-
 
 # workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
 # talao workspac contract 0x4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68
@@ -34,7 +28,13 @@ import json
 import os
 import random
 import jwt
+from eth_account.messages import encode_defunct
+from eth_account import Account
 
+#for demo only
+private_key = "0xfabc26253be62915e21981951f0a46cc58ae474a29d490413d9878371a10e47a"
+client_did = 'did:talao:talaonet:c5C1B070b46138AC3079cD9Bce10010d6e1fCD8D'
+client_address = '0x194d92A8798c14Dc59080aF4Baf4588140F34F49'
 
 filename = './talao_rsa_publickey.pem'
 try :
@@ -58,8 +58,6 @@ upload_path = '/home/thierry/Talao/uploads/'
 client_id = 'iPSoIWDI4shQ0dEG86ZpSFdj'
 client_secret = '68R8QzaaTigNcISRHSymdZb9D53YfaM2AOm8HnULg1ILvrIl'
 post_logout_uri = 'http://127.0.0.1:4000/post_logout'
-
-
 
 
 if myenv == 'aws' :
@@ -185,18 +183,25 @@ def did_check () :
  #test de Openid connect flow, login  de l application locale avec redirection sur le login Talao.co par OpenId Connect (scope openid)
 @app.route('/sso', methods=['GET', 'POST'])
 def root():
+
     data = {
             'response_type': 'code',
             'client_id': client_id,
             'state': str(random.randint(0, 99999)),
-            'nonce' :  str(random.randint(0, 99999)),
+            'nonce' :  str(random.randint(10000, 999999)), 
             'redirect_uri': url_callback,
             'scope': 'openid email address resume profile phone ',
+            'client_did' : client_did
         }
+    # challenge/response pour user wallet
+    print('code envoyé au user pour signature = ', data['nonce'])
+    # client signature of data as a json, signature is added to data
+    msg = encode_defunct(text=data['nonce'])
+    client_signature  = Account.sign_message(msg, private_key).signature.hex()
     session['state'] = data['state']
     session['endpoint'] = 'user_info'
     print('step 1 : demande d autorisation envoyée ')
-    return redirect(talao_url_authorize + '?' + urlencode(data))
+    return redirect(talao_url_authorize + '?' + urlencode(data)+ '&client_signature=' + client_signature)
 
  #test de user_accepts_company_referent avec redirection sur le login Talao.co
 @app.route('/user_accepts_company_referent', methods=['GET', 'POST'])
@@ -285,31 +290,35 @@ def root_6():
  # Callback avec call sur les endpoints précédents
 @app.route('/callback', methods=['GET', 'POST'])
 def talao():
-    print('request reçu dans /callback = ', request.args)
+    if 'error' in request.args :
+        flash(request.args.get('error_description'), 'danger')
+        return redirect('/')
     code = request.args.get('code')
+    session['wallet_signature'] = request.args.get('wallet_signature')
+    session['wallet_address'] = request.args.get('wallet_address')
     if request.args.get('state') != session['state'] :
         print('probleme state/CSRF')
+   
     data = {
         'grant_type': 'authorization_code',
         'redirect_uri': url_callback,
         'client_id': client_id,
         'client_secret': client_secret,
         'code': code,
-        'scope' : '' # inutile
+        'scope' : '', # inutile,
     }
     response = requests.post(talao_url_token, data=data, auth=(client_id, client_secret))
     print('step 2 : demande d un Access Token envoyée')
 
     if response.status_code == 200:
         token_data = response.json()
-        print('Access Token reçu = ', token_data['access_token'])
         #print('Refresh Token = ',token_data.get('refresh_token'))
         session['id_token'] = token_data.get('id_token')
         # decryptage  du JWT et verification de la signature avec la cle RSA publique de Talao
+        session['JWT'] = "No ID Token"
         if token_data.get('id_token') :
             try :
-                JWT = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience= 'did:talao:talaonet:EE09654eEdaA79429F8D216fa51a129db0f72250')
-                print('JWT = ', JWT)
+                session['JWT'] = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience= 'did:talao:talaonet:EE09654eEdaA79429F8D216fa51a129db0f72250')
             except Exception as e : # echec verification de la signature
                 print(e)
 
@@ -356,6 +365,9 @@ def talao():
             endpoint_response = requests.post(talao_url + '/api/v1/user_uploads_signature', files=signature, headers=headers)
 
         print('step 3 call du endpoint envoyé')
+        print('wallet signature = ', session['wallet_signature'])
+        print('wallet address = ', session['wallet_address'])
+
         html = """
         <!DOCTYPE html>
         <html lang="en">
@@ -363,8 +375,15 @@ def talao():
         <h2>Vous etes maintenant connecté au site Web de Ma Societe.</h2>
         <h3> Data reçue depuis votre Identité Numérique : </h3>
         <p>
+        <b>ID Token</b> : {{session['JWT']}}
+        <br>
+        <b>Wallet address</b> : {{session['wallet_address']}}
+        <br>
+        <b>Wallet signature</b> : {{session['wallet_signature']}}
+
+        <br>
         {% for key, value in endpoint_response.json().items() %}
-        <div>{{key}}: {{value}}</div>
+        <div><b>{{key}}</b> : {{value}}</div>
         {% endfor %}
         <br>
         <form method=post action="/logout" enctype=multipart/form-data>
