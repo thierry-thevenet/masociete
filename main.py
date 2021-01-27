@@ -79,6 +79,7 @@ talao_url_logout = talao_url + '/api/v1/oauth_logout'
 @app.route('/', methods=['GET', 'POST'])
 def login() :
     if request.method == 'GET':
+        print('request = ', request.__dict__)
         html = """<html lang="en">
 			<body>
 				<h1>Website de Ma Société</h1>
@@ -190,18 +191,21 @@ def root():
             'state': str(random.randint(0, 99999)),
             'nonce' :  str(random.randint(10000, 999999)), 
             'redirect_uri': url_callback,
-            'scope': 'openid email address resume profile phone ',
+            'scope': 'openid email address resume profile phone did_authn',
             'client_did' : client_did
         }
-    # challenge/response pour user wallet
-    print('code envoyé au user pour signature = ', data['nonce'])
-    # client signature of data as a json, signature is added to data
-    msg = encode_defunct(text=data['nonce'])
-    client_signature  = Account.sign_message(msg, private_key).signature.hex()
+
+    session['nonce'] = data['nonce']
     session['state'] = data['state']
     session['endpoint'] = 'user_info'
+
+    # data request is signed by client and signature is added to data
+    message = data['client_id'] + data['nonce'] + data['redirect_uri'] + data['scope'] + data['client_did']
+    msg = encode_defunct(text=message)
+    data['signature'] = Account.sign_message(msg, private_key).signature.hex()
+
     print('step 1 : demande d autorisation envoyée ')
-    return redirect(talao_url_authorize + '?' + urlencode(data)+ '&client_signature=' + client_signature)
+    return redirect(talao_url_authorize + '?' + urlencode(data))
 
  #test de user_accepts_company_referent avec redirection sur le login Talao.co
 @app.route('/user_accepts_company_referent', methods=['GET', 'POST'])
@@ -286,7 +290,7 @@ def root_6():
     print('step 1 : demande d autorisation envoyée ')
     return redirect(talao_url_authorize + '?' + urlencode(data))
 
-
+##################################################################################################################
  # Callback avec call sur les endpoints précédents
 @app.route('/callback', methods=['GET', 'POST'])
 def talao():
@@ -294,8 +298,7 @@ def talao():
         flash(request.args.get('error_description'), 'danger')
         return redirect('/')
     code = request.args.get('code')
-    session['wallet_signature'] = request.args.get('wallet_signature')
-    session['wallet_address'] = request.args.get('wallet_address')
+    session['wallet_signature'] = request.args.get('signature')
     if request.args.get('state') != session['state'] :
         print('probleme state/CSRF')
    
@@ -365,8 +368,9 @@ def talao():
             endpoint_response = requests.post(talao_url + '/api/v1/user_uploads_signature', files=signature, headers=headers)
 
         print('step 3 call du endpoint envoyé')
-        print('wallet signature = ', session['wallet_signature'])
-        print('wallet address = ', session['wallet_address'])
+
+        msg = encode_defunct(text=session['nonce'])
+        session['signer'] = Account.recover_message(msg, signature=session['wallet_signature'])
 
         html = """
         <!DOCTYPE html>
@@ -377,10 +381,7 @@ def talao():
         <p>
         <b>ID Token</b> : {{session['JWT']}}
         <br>
-        <b>Wallet address</b> : {{session['wallet_address']}}
-        <br>
-        <b>Wallet signature</b> : {{session['wallet_signature']}}
-
+        <b>Wallet signer</b> : {{session['signer']}}
         <br>
         {% for key, value in endpoint_response.json().items() %}
         <div><b>{{key}}</b> : {{value}}</div>
