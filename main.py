@@ -27,7 +27,7 @@ from flask import Flask, redirect, request, render_template_string, session, sen
 import json
 import os
 import random
-import jwt
+import jwt #https://pyjwt.readthedocs.io/en/stable/
 from eth_account.messages import encode_defunct
 from eth_account import Account
 
@@ -79,7 +79,6 @@ talao_url_logout = talao_url + '/api/v1/oauth_logout'
 @app.route('/', methods=['GET', 'POST'])
 def login() :
     if request.method == 'GET':
-        print('request = ', request.__dict__)
         html = """<html lang="en">
 			<body>
 				<h1>Website de Ma Société</h1>
@@ -298,7 +297,11 @@ def talao():
         flash(request.args.get('error_description'), 'danger')
         return redirect('/')
     code = request.args.get('code')
-    session['wallet_signature'] = request.args.get('signature')
+    session['signature'] = request.args.get('signature')
+    session['message'] = request.args.get('message')
+    print('signature = ', session['signature'])
+    print('message = ', session['message'])
+
     if request.args.get('state') != session['state'] :
         print('probleme state/CSRF')
    
@@ -321,7 +324,7 @@ def talao():
         session['JWT'] = "No ID Token"
         if token_data.get('id_token') :
             try :
-                session['JWT'] = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience= 'did:talao:talaonet:EE09654eEdaA79429F8D216fa51a129db0f72250')
+                session['JWT'] = jwt.decode(token_data.get('id_token'),talao_public_rsa_key, algorithms='RS256', audience= 'did:talao:talaonet:4562DB03D8b84C5B10FfCDBa6a7A509FF0Cdcc68')
             except Exception as e : # echec verification de la signature
                 print(e)
 
@@ -369,9 +372,9 @@ def talao():
 
         print('step 3 call du endpoint envoyé')
 
-        msg = encode_defunct(text=session['nonce'])
-        session['signer'] = Account.recover_message(msg, signature=session['wallet_signature'])
-
+        msg = encode_defunct(text=session['message'])
+        session['signer'] = Account.recover_message(msg, signature=session['signature'])
+        print('signer = ', session['signer'])
         html = """
         <!DOCTYPE html>
         <html lang="en">
@@ -381,7 +384,6 @@ def talao():
         <p>
         <b>ID Token</b> : {{session['JWT']}}
         <br>
-        <b>Wallet signer</b> : {{session['signer']}}
         <br>
         {% for key, value in endpoint_response.json().items() %}
         <div><b>{{key}}</b> : {{value}}</div>
@@ -509,7 +511,6 @@ def issue_experience():
         response = requests.post(talao_url + '/api/v1/issue_experience', data=json.dumps(data), headers=headers)
         return response.json()
     print('demande de token refusée')
-    print('response : ', response.__dict__)
     return 'Demande de token refusée pour creer un certificat d experience'
 
 
@@ -546,7 +547,6 @@ def issue_agreement():
         response = requests.post(talao_url + '/api/v1/issue_agreement', data=json.dumps(data), headers=headers)
         return response.json()
     print('demande de token refusée')
-    print('response : ', response.__dict__)
     return 'Demande de token refusée pour creer un certificat d agrement'
 
 
@@ -594,7 +594,6 @@ def issue_reference():
         response = requests.post(talao_url + '/api/v1/issue_reference', data=json.dumps(data), headers=headers)
         return response.json()
     print('demande de token refusée')
-    print('response : ', response.__dict__)
     return 'Demande de token refusée pour creer un certificat de reference'
 
 # workspace contract de newindus = 0x5aE452b6fD5d77dB83F7c617299b6DA88abA915D
